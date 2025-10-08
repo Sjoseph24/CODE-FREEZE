@@ -1,0 +1,1243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CODE FREEZE</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Configure Tailwind for Inter font -->
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&display=swap');
+        /* Modern gradient background with subtle texture */
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #0ea5a4 45%, #7c3aed 100%);
+            min-height: 100vh;
+            color-scheme: light;
+            overflow-y: auto;
+            color: #f8fafc; /* high-contrast off-white text */
+        }
+
+        /* Noise overlay to give subtle texture */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: radial-gradient(rgba(255,255,255,0.02) 1px, transparent 1px);
+            background-size: 6px 6px;
+            pointer-events: none;
+            z-index: 0;
+            mix-blend-mode: overlay;
+        }
+        /* Custom styles for code blocks and buttons */
+        .code-block {
+            background-color: rgba(17,24,39,0.85); /* slightly translucent */
+            color: #e6eef6;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            font-family: monospace;
+            white-space: pre-wrap;
+            overflow-x: auto;
+            box-shadow: 0 6px 18px rgba(2,6,23,0.45);
+        }
+
+        /* Header and general text adjustments to ensure readability */
+        header, #round-title, #question-area, .text-gray-700, .text-gray-800, p, label {
+            color: rgba(248,250,252,0.95);
+        }
+
+        /* Site title font and style */
+        .site-title {
+            font-family: 'Poppins', 'Inter', sans-serif;
+            background: linear-gradient(90deg, #e0f2fe 0%, #a78bfa 50%, #fff7ed 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            letter-spacing: 0.6px;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+        .correct {
+            background-color: rgba(16,185,129,0.12); /* subtle green */
+            border-left: 5px solid rgba(16,185,129,0.9);
+        }
+        .incorrect {
+            background-color: rgba(239,68,68,0.08); /* subtle red */
+            border-left: 5px solid rgba(239,68,68,0.9);
+        }
+        .output-button:disabled {
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        /* App container tweak for translucent card and depth */
+        #app {
+            position: relative;
+            z-index: 10;
+            background: rgba(255,255,255,0.08);
+            backdrop-filter: blur(8px) saturate(120%);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+
+        /* Timer styling */
+        #timer-display {
+            color: #edf2f3; /* cyan */
+            font-weight: 700;
+        }
+        /* Make the numeric timer stand out as a pill */
+        #timer {
+            display: inline-block;
+            background: linear-gradient(90deg, #feffff, #e1dbec);
+            color: #e2e6eb;
+            padding: 6px 10px;
+            border-radius: 999px;
+            box-shadow: 0 8px 24px rgb(228, 226, 233), 0 0 12px rgb(216, 220, 221);
+            font-weight: 800;
+            transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+        }
+        #timer.low-time {
+            background: linear-gradient(90deg, #ef4444, #fb7185);
+            color: #fff;
+            box-shadow: 0 10px 26px rgba(239,68,68,0.42), 0 0 12px rgba(252,165,165,0.45);
+            transform: scale(1.06);
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.08); }
+            100% { transform: scale(1); }
+        }
+
+        /* Activity overlay: override global white text so content is readable on white panel */
+        #activity-overlay > div {
+            color: #0f172a; /* dark text for contrast on white background */
+        }
+
+        /* Style the activity timer prominently inside the overlay */
+        #activity-timer {
+            display: inline-block;
+            background: linear-gradient(90deg, #06b6d4, #7c3aed);
+            color: #021124;
+            padding: 10px 16px;
+            border-radius: 12px;
+            font-weight: 800;
+            font-size: 2rem;
+            box-shadow: 0 8px 24px rgba(124,58,237,0.18), 0 0 10px rgba(6,182,212,0.24);
+        }
+
+        /* Make activity overlay action buttons stand out */
+        #activity-overlay button {
+            font-weight: 700;
+        }
+
+        /* Subtle decorative top-right accent */
+        .decor-accent {
+            position: absolute;
+            top: -60px;
+            right: -80px;
+            width: 280px;
+            height: 280px;
+            background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.06), transparent 30%), linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+            transform: rotate(15deg);
+            filter: blur(18px);
+            z-index: -1;
+        }
+
+        /* Ensure text is visible: enforce dark text on light panels and form elements */
+        #app .bg-white,
+        #app .bg-gray-50,
+        #app .bg-gray-100,
+        #app .rounded-xl > p,
+        #app .rounded-xl > h4 {
+            color: #79839d !important;
+        }
+
+        /* Make inputs, textareas and pre blocks on light backgrounds use dark text */
+        #app input, #app textarea, #app select, #app pre {
+            color: #7789b3 !important;
+        }
+
+        /* Buttons with light backgrounds should also have dark text if needed */
+        #app .bg-gray-100, #app .bg-white .btn-light, #app .bg-gray-50 .btn-light {
+            color: #0f172a !important;
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-8">
+
+    <div id="app" class="max-w-4xl mx-auto bg-white shadow-2xl rounded-xl p-6 md:p-10 transition-all duration-300">
+        <div class="decor-accent" aria-hidden="true"></div>
+        
+        <!-- Header -->
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-extrabold text-blue-800 site-title">CODE FREEZE</h1>
+            <p class="text-gray-600 mt-2">Three Rounds of Programming Challenges.</p>
+            <div id="score-display" class="mt-4 text-xl font-semibold text-gray-700">Score: <span id="current-score" class="text-blue-600">0</span> / <span id="total-score" class="text-gray-500">100</span></div>
+        </header>
+
+        <!-- Quiz Container -->
+        <div id="quiz-container">
+            <h2 id="round-title" class="text-3xl font-bold mb-6 text-gray-800 border-b-2 pb-2 border-blue-200"></h2>
+            <!-- Timer display (starts for each question) -->
+            <div id="timer-container" class="flex items-center justify-end mb-4">
+                <div id="timer-display" class="text-sm font-semibold text-gray-600">Time left: <span id="timer">30s</span></div>
+            </div>
+            
+            <!-- Question Content Area -->
+            <div id="question-area" class="space-y-6">
+                <!-- Content will be injected here -->
+            </div>
+            
+            <!-- Navigation/Action Buttons -->
+            <div id="navigation-area" class="mt-8 pt-6 border-t border-gray-200 flex justify-between items-center">
+                <!-- Previous button removed per request -->
+                <button id="next-btn" class="px-8 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-lg hover:bg-blue-700 transition duration-150" onclick="navigateQuestion(1)">Next Question</button>
+                <button id="activity-btn" class="px-6 py-2 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 transition duration-150 ml-3">Activity</button>
+                <button id="submit-btn" class="px-8 py-3 bg-green-600 text-white font-semibold rounded-lg shadow-lg hover:bg-green-700 transition duration-150 hidden" onclick="submitRound()">Submit Round 2</button>
+                <button id="final-submit-btn" class="px-8 py-3 bg-purple-600 text-white font-semibold rounded-lg shadow-lg hover:bg-purple-700 transition duration-150 hidden" onclick="submitRound3()">Final Submit</button>
+                <button id="output-btn" class="px-8 py-3 bg-yellow-600 text-gray-800 font-semibold rounded-lg shadow-lg hover:bg-yellow-700 transition duration-150 hidden" onclick="checkRound2Blanks()" disabled>Check Output</button>
+            </div>
+        </div>
+
+        <!-- Activity Overlay & Controls -->
+        <div id="activity-overlay" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
+            <div class="bg-white rounded-xl p-6 max-w-md text-center">
+                <h3 class="text-2xl font-bold mb-4">Activity Time</h3>
+                <p id="activity-desc" class="mb-4 text-lg font-medium text-gray-800">Complete the activity to earn a time bonus for the current question.</p>
+                <div id="activity-label" class="mb-2 text-sm font-semibold text-indigo-700"></div>
+                <div id="activity-timer" class="text-3xl font-mono mb-4">02:00</div>
+                <div class="flex justify-center gap-4">
+                    <button id="activity-cancel" class="px-4 py-2 bg-gray-300 rounded">Cancel</button>
+                    <button id="activity-start" class="px-4 py-2 bg-green-600 text-white rounded">Start Activity</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Completion Modal/Screen -->
+        <div id="completion-screen" class="hidden text-center py-12">
+            <h2 class="text-4xl font-bold text-green-700 mb-4">Challenge Complete!</h2>
+            <p class="text-xl text-gray-700 mb-6">You've successfully completed all three rounds of the Gauntlet.</p>
+            <div class="text-5xl font-extrabold text-blue-600 mb-8">Final Score: <span id="final-score-display">0</span> / 100</div>
+            <p class="text-lg text-gray-600">Feel free to refresh the page and try again, or study the questions to master these tricky concepts!</p>
+        </div>
+        
+        <!-- Custom Alert/Toast Container (for a better UX than alert()) -->
+        <div id="custom-toast" class="fixed bottom-5 right-5 p-4 rounded-lg shadow-xl text-white transition-opacity duration-300 opacity-0 hidden"></div>
+        <!-- Transient score badge shown after advancing to next question -->
+        <div id="score-badge" class="fixed top-6 right-6 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg opacity-0 transform transition-all duration-300 scale-90 pointer-events-none">+0</div>
+    </div>
+
+    <script>
+        // --- Firebase Globals (Mandatory inclusion for canvas environment) ---
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        // NOTE: Since this app is client-side only and doesn't require persistence, we are skipping the full Firebase setup,
+        // but the globals must be declared.
+        
+        // --- Quiz Data Structure (Simulated API Response) ---
+        // This data simulates the structured JSON response from the Gemini API.
+        const quizData = {
+            round1_mcqs: [
+                {
+                    language: "Python",
+                    question: "Consider the Python function below. If `func()` is called three times, what will the output be?",
+                    code_snippet: "def func(a, L=[]):\n    L.append(a)\n    print(L)\n\nfunc(1)\nfunc(2)\nfunc(3)",
+                    options: {
+                        "A": "[1], [2], [3]",
+                        "B": "[1], [1, 2], [1, 2, 3]",
+                        "C": "[1], [2], [3] and a runtime warning",
+                        "D": "[[1]], [[2]], [[3]]"
+                    },
+                    answer_key: "B",
+                    points: 1
+                },
+                {
+                    language: "JavaScript",
+                    question: "In JavaScript, what is the sequence of console logs for the following code? (Focus on the Event Loop)",
+                    code_snippet: "console.log(1);\n\nsetTimeout(() => console.log(2), 0);\n\nPromise.resolve().then(() => console.log(3));\n\nconsole.log(4);",
+                    options: {
+                        "A": "1, 2, 3, 4",
+                        "B": "1, 4, 2, 3",
+                        "C": "1, 4, 3, 2",
+                        "D": "1, 3, 4, 2"
+                    },
+                    answer_key: "C",
+                    points: 1
+                },
+                {
+                    language: "C++",
+                    question: "What is the key concept demonstrated when an object of class `Derived` is pointed to by a pointer of class `Base`, and calling `ptr->method()` executes `Derived::method`?",
+                    code_snippet: "class Base { public: virtual void method() { ... } };\nclass Derived : public Base { public: void method() { ... } };\n\nBase* ptr = new Derived();\nptr->method(); // Which method runs?",
+                    options: {
+                        "A": "Polymorphic Hiding",
+                        "B": "Static Dispatch",
+                        "C": "Virtual Base Class",
+                        "D": "Dynamic Dispatch (Polymorphism)"
+                    },
+                    answer_key: "D",
+                    points: 1
+                },
+                {
+                    language: "Java",
+                    question: "In Java, what is the output of the following comparison? (Hint: Integer caching)",
+                    code_snippet: "Integer a = 127;\nInteger b = 127;\nInteger c = 128;\nInteger d = 128;\n\nSystem.out.println(a == b);\nSystem.out.println(c == d);",
+                    options: {
+                        "A": "true, true",
+                        "B": "true, false",
+                        "C": "false, false",
+                        "D": "false, true"
+                    },
+                    answer_key: "B",
+                    points: 1
+                },
+                {
+                    language: "Go",
+                    question: "Which of the following describes the key difference between using a `switch` statement and a `select` statement in Go?",
+                    code_snippet: "/* No code snippet provided for this conceptual question */",
+                    options: {
+                        "A": "`switch` is for values; `select` is for types.",
+                        "B": "`switch` is non-blocking; `select` is blocking.",
+                        "C": "`switch` is for expressions/values; `select` is for communication operations (channels).",
+                        "D": "`select` can only be used with buffered channels."
+                    },
+                    answer_key: "C",
+                    points: 1
+                },
+                {
+                    language: "Python",
+                    question: "Which is generally more memory-efficient when processing a very large sequence of data items?",
+                    code_snippet: "A) [x * x for x in range(1000000)]\nB) (x * x for x in range(1000000))",
+                    options: {
+                        "A": "A (List comprehension)",
+                        "B": "B (Generator expression)",
+                        "C": "They are equally efficient.",
+                        "D": "Efficiency depends on the number of CPUs."
+                    },
+                    answer_key: "B",
+                    points: 1
+                },
+                {
+                    language: "JavaScript",
+                    question: "What is the value of `this.x` inside the inner anonymous function if the function is defined using a standard function declaration (not an arrow function)?",
+                    code_snippet: "const obj = { x: 42, inner: function() { setTimeout(function() { console.log(this.x); }, 100); } };\nobj.inner();",
+                    options: {
+                        "A": "42",
+                        "B": "The global window object or undefined (strict mode)",
+                        "C": "The `obj` itself",
+                        "D": "A Syntax Error"
+                    },
+                    answer_key: "B",
+                    points: 1
+                },
+                {
+                    language: "C++",
+                    question: "In C++, what primary issue does the Rule of Three (or Five) address when a class manages a raw resource (like a pointer)?",
+                    code_snippet: "/* Conceptual question about memory management */",
+                    options: {
+                        "A": "Preventing stack overflow errors.",
+                        "B": "Ensuring the virtual destructor is called.",
+                        "C": "Handling deep copies and resource cleanup when objects are copied or destroyed.",
+                        "D": "Making the class a pure abstract base class."
+                    },
+                    answer_key: "C",
+                    points: 1
+                },
+                {
+                    language: "Java",
+                    question: "Which type of exception in Java are you *not* required to handle or declare in the method signature, leading to a potential crash if unhandled?",
+                    code_snippet: "/* Conceptual question about exceptions */",
+                    options: {
+                        "A": "Checked Exceptions (e.g., `IOException`)",
+                        "B": "Unchecked Exceptions (e.g., `RuntimeException`)",
+                        "C": "Throwable",
+                        "D": "Error (e.g., `StackOverflowError`)"
+                    },
+                    answer_key: "B",
+                    points: 1
+                },
+                {
+                    language: "Go",
+                    question: "What concept allows a Go struct to satisfy an interface simply by implementing all its required methods, without an explicit declaration?",
+                    code_snippet: "/* Conceptual question about Go interfaces */",
+                    options: {
+                        "A": "Explicit Implementation",
+                        "B": "Reflection Binding",
+                        "C": "Duck Typing (Implicit Interface Satisfaction)",
+                        "D": "Type Embedding"
+                    },
+                    answer_key: "C",
+                    points: 1
+                },
+            ],
+            round2_fill_in_the_blanks: [
+                {
+                    language: "Python",
+                    description: "Fill the blank to complete the list comprehension that doubles numbers 0..4.",
+                    code_template: "result = [BLANK_1 for x in range(5)]\n# result should be: [0, 2, 4, 6, 8]",
+                    blank_keys: ["x*2"],
+                    correct_output: "[0, 2, 4, 6, 8]",
+                    points: 1
+                },
+                {
+                    language: "JavaScript",
+                    description: "Fill the blank to initialize the counter so the closure logs 1 then 2.",
+                    code_template: "function createCounter() {\n    let count = BLANK_1;\n    return function() {\n        count++;\n        console.log(count);\n    };\n}\n\nconst c = createCounter();\nc();\nc();\n// Expected logs: 1, 2",
+                    blank_keys: ["0"],
+                    correct_output: "1\n2",
+                    points: 1
+                },
+                {
+                    language: "C++",
+                    description: "Fill the blank to move resources from v1 into v2 using move semantics.",
+                    code_template: "std::vector<int> v1 = {1,2,3};\nstd::vector<int> v2 = BLANK_1(v1);",
+                    blank_keys: ["std::move"],
+                    correct_output: "(v2 now owns v1's resources)",
+                    points: 1
+                },
+                {
+                    language: "SQL",
+                    description: "Fill the blank to select all rows from the users table where age is greater than 18.",
+                    code_template: "SELECT * FROM users WHERE age BLANK_1 18;",
+                    blank_keys: [">"],
+                    correct_output: "(rows where age > 18)",
+                    points: 1
+                },
+                {
+                    language: "Go",
+                    description: "Fill the blank to declare an empty struct-based signal channel used for cancellation.",
+                    code_template: "stop := make(chan BLANK_1)\n// send a signal: close(stop)",
+                    blank_keys: ["struct{}"],
+                    correct_output: "(a channel of struct{} signals can be used to stop goroutines)",
+                    points: 1
+                }
+            ],
+            // Round 3: an array of code-creation challenges. We'll pick one per player (shuffled).
+            round3_code_creation: [
+                {
+                    id: 'r3-js-curry',
+                    language: "JavaScript",
+                    description: "Write a JavaScript function called `curryAdd` that allows repeated calls until the final argument is supplied, at which point it returns the sum of all arguments passed throughout the calls. The target output demonstrates this currying/partial application.",
+                    target_output: "15\n10",
+                    expected_solution_hint: "The function must return a new function until all arguments are collected, leveraging a closure to maintain the running total of arguments.",
+                    points: 1
+                },
+                {
+                    id: 'r3-py-fib',
+                    language: "Python",
+                    description: "Write a function `fib_seq(n)` that returns a string containing the first `n` Fibonacci numbers separated by commas. The target output shows expected format for n=5.",
+                    target_output: "0,1,1,2,3",
+                    expected_solution_hint: "Iteratively build a list and join with commas; watch edge cases for n=0 or n=1.",
+                    points: 1
+                },
+                {
+                    id: 'r3-js-async',
+                    language: "JavaScript",
+                    description: "Write an async function `fetchAndSum(urls)` that fetches numeric results from an array of URLs and returns their sum. The target output shows the final numeric sum.",
+                    target_output: "42",
+                    expected_solution_hint: "Use Promise.all or async/await to fetch concurrently and sum results after parsing responses.",
+                    points: 1
+                },
+                {
+                    id: 'r3-java-reverse',
+                    language: "Java",
+                    description: "Write a method `reverseWords(String s)` that reverses the word order in a sentence while preserving word characters. The target output demonstrates the reversed phrase.",
+                    target_output: "world Hello",
+                    expected_solution_hint: "Split on whitespace, reverse the array, and join with a single space.",
+                    points: 1
+                }
+            ]
+        };
+
+        // Shuffle questions per user (Fisher-Yates). We create shuffled copies so original quizData is preserved.
+        function shuffleArray(arr) {
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            return arr;
+        }
+
+        const shuffledRound1 = shuffleArray([...quizData.round1_mcqs]);
+        const shuffledRound2 = shuffleArray([...quizData.round2_fill_in_the_blanks]);
+
+        // For Round 3 we have an array of challenges; shuffle and pick one per player so each player sees a different challenge.
+        const shuffledRound3 = shuffleArray([...quizData.round3_code_creation]);
+        const selectedRound3 = shuffledRound3.length > 0 ? shuffledRound3[0] : null;
+
+
+        // --- Timer (per-round durations) ---
+        const ROUND1_SECONDS = 30;      // Round 1 per-question
+        const ROUND2_SECONDS = 50;      // Round 2 per-question
+        const ROUND3_SECONDS = 240;     // Round 3 (4 minutes)
+        // Backwards-compatible default
+        const QUESTION_TIME_SECONDS = ROUND1_SECONDS;
+
+        let timerInterval = null;
+        let timeLeft = QUESTION_TIME_SECONDS;
+
+        function getQuestionDuration() {
+            if (currentRound === 1) return ROUND1_SECONDS;
+            if (currentRound === 2) return ROUND2_SECONDS;
+            if (currentRound === 3) return ROUND3_SECONDS;
+            return QUESTION_TIME_SECONDS;
+        }
+
+        function formatTime(s) {
+            // Show MM:SS for durations >= 60s, otherwise simple seconds
+            if (s >= 60) {
+                const mm = String(Math.floor(s / 60)).padStart(2, '0');
+                const ss = String(s % 60).padStart(2, '0');
+                return `${mm}:${ss}`;
+            }
+            return `${s}s`;
+        }
+
+        function updateTimerDisplay() {
+            const el = document.getElementById('timer');
+            if (!el) return;
+            el.textContent = formatTime(timeLeft);
+            // default highlighted color
+            el.style.color = '#06b6d4';
+            el.style.fontWeight = '700';
+            // low-time visual warning (use class for animation/shadow)
+            if (timeLeft <= 5) {
+                el.classList.add('low-time');
+            } else {
+                el.classList.remove('low-time');
+            }
+        }
+
+        /**
+         * Starts the question timer.
+         * Usage:
+         *   startTimer(durationSeconds, onExpiry)
+         *   startTimer(onExpiry) // uses per-round duration
+         *   startTimer() // uses per-round duration and no expiry callback
+         */
+        function startTimer(durationSeconds, onExpiry) {
+            // Support signature startTimer(onExpiry)
+            if (typeof durationSeconds === 'function') {
+                onExpiry = durationSeconds;
+                durationSeconds = getQuestionDuration();
+            }
+            if (typeof durationSeconds === 'undefined' || durationSeconds === null) {
+                durationSeconds = getQuestionDuration();
+            }
+
+            stopTimer();
+            timeLeft = durationSeconds;
+            updateTimerDisplay();
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                updateTimerDisplay();
+                if (timeLeft <= 0) {
+                    stopTimer();
+                    if (typeof onExpiry === 'function') onExpiry();
+                }
+            }, 1000);
+        }
+
+        function stopTimer() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+        }
+
+        function resetTimer() {
+            timeLeft = QUESTION_TIME_SECONDS;
+            updateTimerDisplay();
+        }
+
+        // --- Global State ---
+        let currentRound = 1;
+        let currentQuestionIndex = 0;
+    // Internal scoring: each question counts as 1 (binary 0/1). We'll display a scaled score out of 100.
+    const NUM_QUESTIONS = shuffledRound1.length + shuffledRound2.length + (selectedRound3 ? 1 : 0); // Round3 counts as 1
+    let totalScore = 100; // display target
+        let score = 0; // internal correct count
+        let userAnswers = {
+            round1: new Array(shuffledRound1.length).fill(null),
+            round2: new Array(shuffledRound2.length).fill(null),
+            round3: ''
+        };
+    let isRound1Submitted = false;
+    let isRound2Submitted = false;
+    let isRound3Submitted = false;
+
+        // --- Utility Functions ---
+
+        /** Shows a custom toast/alert message */
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('custom-toast');
+            toast.textContent = message;
+            toast.className = 'fixed bottom-5 right-5 p-4 rounded-lg shadow-xl text-white transition-opacity duration-300';
+            toast.classList.remove('opacity-0', 'hidden', 'bg-red-600', 'bg-green-600', 'bg-blue-600');
+
+            if (type === 'success') {
+                toast.classList.add('bg-green-600');
+            } else if (type === 'error') {
+                toast.classList.add('bg-red-600');
+            } else {
+                toast.classList.add('bg-blue-600');
+            }
+            toast.classList.remove('hidden');
+            setTimeout(() => toast.classList.add('opacity-100'), 10);
+            setTimeout(() => toast.classList.remove('opacity-100'), 3000);
+            setTimeout(() => toast.classList.add('opacity-0'), 3500);
+            setTimeout(() => toast.classList.add('hidden'), 3800);
+        }
+
+        /** Updates the score display on the header */
+        function updateScoreDisplay() {
+            // show scaled score to 100
+            const scaled = Math.round((score / NUM_QUESTIONS) * 100);
+            document.getElementById('current-score').textContent = scaled;
+            document.getElementById('total-score').textContent = totalScore;
+        }
+
+        /** Recompute internal score from current state to avoid drift */
+        function recalcScoreFromState() {
+            let cnt = 0;
+            // Round 1: check awarded flags or correct answers
+            shuffledRound1.forEach((q, idx) => {
+                if (q && q._awarded) cnt++;
+                else if (userAnswers.round1[idx] && userAnswers.round1[idx] === q.answer_key) cnt++;
+            });
+            // Round 2: check awarded flags
+            shuffledRound2.forEach((q) => {
+                if (q && q._awarded) cnt++;
+            });
+            // Round 3 (selected challenge)
+            if (selectedRound3 && selectedRound3.isCorrect) cnt++;
+            score = cnt;
+            updateScoreDisplay();
+        }
+
+        // Hide/reveal header score while answering; reveal briefly after advancing
+        let _revealScoreTimeout = null;
+        function hideScoreHeader() {
+            const el = document.getElementById('score-display');
+            if (el) el.classList.add('hidden');
+        }
+
+        function revealScoreHeaderTemporary(ms = 3000) {
+            const el = document.getElementById('score-display');
+            if (!el) return;
+            el.classList.remove('hidden');
+            if (_revealScoreTimeout) clearTimeout(_revealScoreTimeout);
+            _revealScoreTimeout = setTimeout(() => {
+                el.classList.add('hidden');
+            }, ms);
+        }
+
+        // Activity game handling
+    let activityInterval = null;
+    let activityTimeLeft = 120; // 2 minutes in seconds
+    // Activity rewards: rounds 1 & 2 get 15s, round 3 gets 60s (1 minute)
+    const ACTIVITY_REWARD_SECONDS_R1_R2 = 15;
+    const ACTIVITY_REWARD_SECONDS_R3 = 60;
+
+        function formatMMSS(s) {
+            const mm = String(Math.floor(s/60)).padStart(2,'0');
+            const ss = String(s % 60).padStart(2,'0');
+            return `${mm}:${ss}`;
+        }
+
+        function openActivityOverlay() {
+            // Pause question timer
+            stopTimer();
+            activityTimeLeft = 120;
+            document.getElementById('activity-timer').textContent = formatMMSS(activityTimeLeft);
+            // Show a special label for Round 3
+            const labelEl = document.getElementById('activity-label');
+            const descEl = document.getElementById('activity-desc');
+            if (labelEl) {
+                if (currentRound === 3) {
+                    labelEl.textContent = '1min extra time if completed!';
+                    descEl.textContent = 'Complete the activity to earn +1:00 min.';
+                } else {
+                    labelEl.textContent = '';
+                    descEl.textContent = 'Complete the activity to earn +15 seconds for the current question.';
+                }
+            }
+            document.getElementById('activity-overlay').classList.remove('hidden');
+        }
+
+        function closeActivityOverlay() {
+            document.getElementById('activity-overlay').classList.add('hidden');
+            // resume question timer
+            startTimer();
+        }
+
+        function startActivityCountdown() {
+            if (activityInterval) clearInterval(activityInterval);
+            activityInterval = setInterval(() => {
+                activityTimeLeft -= 1;
+                document.getElementById('activity-timer').textContent = formatMMSS(activityTimeLeft);
+                if (activityTimeLeft <= 0) {
+                    clearInterval(activityInterval);
+                    activityInterval = null;
+                    // award per-round seconds to current question and resume, but only once per question
+                    const reward = (currentRound === 3) ? ACTIVITY_REWARD_SECONDS_R3 : ACTIVITY_REWARD_SECONDS_R1_R2;
+                    let alreadyUsed = false;
+
+                    if (currentRound === 1) {
+                        const q = shuffledRound1[currentQuestionIndex];
+                        if (q) alreadyUsed = !!q._activityUsed;
+                        else alreadyUsed = false;
+                    } else if (currentRound === 2) {
+                        const q = shuffledRound2[currentQuestionIndex];
+                        if (q) alreadyUsed = !!q._activityUsed;
+                        else alreadyUsed = false;
+                    } else if (currentRound === 3) {
+                        if (selectedRound3) alreadyUsed = !!selectedRound3._activityUsed;
+                        else alreadyUsed = false;
+                    }
+
+                    if (!alreadyUsed) {
+                        timeLeft += reward;
+                        updateTimerDisplay();
+                        // mark used on the relevant object
+                        if (currentRound === 1) { const q = shuffledRound1[currentQuestionIndex]; if (q) q._activityUsed = true; }
+                        if (currentRound === 2) { const q = shuffledRound2[currentQuestionIndex]; if (q) q._activityUsed = true; }
+                        if (currentRound === 3) { if (selectedRound3) selectedRound3._activityUsed = true; }
+                        const rewardText = reward >= 60 ? formatMMSS(reward) : `${reward}s`;
+                        showToast(`Activity complete! +${rewardText} awarded.`, 'success');
+                    } else {
+                        showToast('Activity reward already used for this question.', 'info');
+                    }
+                    closeActivityOverlay();
+                }
+            }, 1000);
+        }
+
+        // Wire up Activity button and overlay controls
+        document.addEventListener('DOMContentLoaded', () => {
+            const activityBtn = document.getElementById('activity-btn');
+            const startBtn = document.getElementById('activity-start');
+            const cancelBtn = document.getElementById('activity-cancel');
+
+            if (activityBtn) activityBtn.addEventListener('click', openActivityOverlay);
+            if (startBtn) startBtn.addEventListener('click', () => startActivityCountdown());
+            if (cancelBtn) cancelBtn.addEventListener('click', () => {
+                if (activityInterval) { clearInterval(activityInterval); activityInterval = null; }
+                // resume the question timer without reward
+                showToast('Activity cancelled. Resuming question timer.', 'info');
+                closeActivityOverlay();
+            });
+        });
+
+        // Show a small transient badge indicating how much the score changed after moving to next question
+        let _scoreBadgeTimeout = null;
+        function showScoreBadge(delta) {
+            const badge = document.getElementById('score-badge');
+            if (!badge) return;
+            if (delta > 0) badge.textContent = `+${delta}`;
+            else if (delta < 0) badge.textContent = `${delta}`;
+            else {
+                // show current scaled score when no delta
+                const scaled = Math.round((score / NUM_QUESTIONS) * 100);
+                badge.textContent = `${scaled}`;
+            }
+            badge.classList.remove('opacity-0','scale-90');
+            badge.classList.add('opacity-100','scale-100');
+            if (_scoreBadgeTimeout) clearTimeout(_scoreBadgeTimeout);
+            _scoreBadgeTimeout = setTimeout(() => {
+                badge.classList.remove('opacity-100','scale-100');
+                badge.classList.add('opacity-0','scale-90');
+            }, 1500);
+        }
+
+        /** Clears the question area for new content */
+        function clearQuestionArea() {
+            document.getElementById('question-area').innerHTML = '';
+        }
+
+        /** Updates navigation buttons visibility based on current round and index */
+        function updateNavigation() {
+            const nextBtn = document.getElementById('next-btn');
+            const submitBtn = document.getElementById('submit-btn');
+            const finalSubmitBtn = document.getElementById('final-submit-btn');
+            const outputBtn = document.getElementById('output-btn');
+
+            nextBtn.classList.add('hidden');
+            submitBtn.classList.add('hidden');
+            finalSubmitBtn.classList.add('hidden');
+            outputBtn.classList.add('hidden');
+            outputBtn.disabled = true;
+
+            if (currentRound === 1) {
+                const maxIndex = shuffledRound1.length - 1;
+                if (currentQuestionIndex < maxIndex) {
+                    nextBtn.classList.remove('hidden');
+                    nextBtn.textContent = "Next Question";
+                } else {
+                    nextBtn.classList.remove('hidden');
+                    nextBtn.textContent = "Start Round 2";
+                }
+                // no previous button; navigation uses Next/Submit only
+                
+            } else if (currentRound === 2) {
+                const maxIndex = shuffledRound2.length - 1;
+                
+                // Show the output button if all blanks are filled
+                const currentBlanks = userAnswers.round2[currentQuestionIndex];
+                if (currentBlanks && Object.values(currentBlanks).every(val => val.trim() !== '')) {
+                     outputBtn.disabled = false;
+                } else if (!currentBlanks) {
+                    outputBtn.disabled = true;
+                }
+
+                outputBtn.classList.remove('hidden');
+
+                if (currentQuestionIndex < maxIndex) {
+                    nextBtn.classList.remove('hidden');
+                    nextBtn.textContent = "Next Question";
+                } else {
+                    submitBtn.classList.remove('hidden');
+                }
+                // Previous button removed from UI; no action needed here.
+            } else if (currentRound === 3) {
+                finalSubmitBtn.classList.remove('hidden');
+            }
+        }
+
+        /** Navigates between questions within a round or to the next round */
+        function navigateQuestion(direction) {
+            if (currentRound === 1) {
+                const maxIndex = shuffledRound1.length - 1;
+                if (currentQuestionIndex + direction > maxIndex) {
+                    submitRound();
+                    return;
+                }
+                const prevScore = score;
+                currentQuestionIndex = Math.max(0, currentQuestionIndex + direction);
+                renderRound1();
+                // Show transient score badge reflecting the delta after moving
+                showScoreBadge(score - prevScore);
+                revealScoreHeaderTemporary();
+
+            } else if (currentRound === 2) {
+                const maxIndex = shuffledRound2.length - 1;
+                if (currentQuestionIndex + direction > maxIndex) {
+                    // This case shouldn't be reached as submit button takes over
+                    return;
+                }
+                const prevScore = score;
+                currentQuestionIndex = Math.max(0, currentQuestionIndex + direction);
+                renderRound2();
+                showScoreBadge(score - prevScore);
+                revealScoreHeaderTemporary();
+            }
+        }
+
+        // --- Round 1 (MCQ) Logic ---
+
+        /** Handles the selection of an option for Round 1 */
+        function handleMcqSelection(questionIndex, selectedOption) {
+            // Update answer and live score (0/1 per question)
+            const prev = userAnswers.round1[questionIndex];
+            userAnswers.round1[questionIndex] = selectedOption;
+            try {
+                const q = shuffledRound1[questionIndex];
+                // Ensure a tracking flag exists
+                if (typeof q._awarded === 'undefined') q._awarded = false;
+                // If previously awarded and now wrong, remove the award
+                if (q._awarded && prev === q.answer_key && selectedOption !== q.answer_key) {
+                    score = Math.max(0, score - 1);
+                    q._awarded = false;
+                }
+                // If not awarded yet and now correct, award 1
+                if (!q._awarded && selectedOption === q.answer_key) {
+                    score += 1;
+                    q._awarded = true;
+                }
+            } catch (e) {
+                // ignore if data issues
+            }
+            updateScoreDisplay();
+
+            // Visually update selection
+            const options = document.querySelectorAll(`#q-${questionIndex} .option-card`);
+            options.forEach(card => {
+                const optionKey = card.getAttribute('data-option');
+                card.classList.remove('bg-blue-100', 'border-blue-500');
+                if (optionKey === selectedOption) {
+                    card.classList.add('bg-blue-100', 'border-blue-500');
+                }
+            });
+        }
+
+        /** Renders the current Round 1 MCQ question */
+        function renderRound1() {
+            hideScoreHeader();
+            document.getElementById('round-title').textContent = `Round 1: Multiple Choice Quiz (${currentQuestionIndex + 1}/${shuffledRound1.length})`;
+            clearQuestionArea();
+            const q = shuffledRound1[currentQuestionIndex];
+            const answer = userAnswers.round1[currentQuestionIndex];
+            const area = document.getElementById('question-area');
+
+            let html = `
+                <div id="q-${currentQuestionIndex}" class="bg-gray-50 p-5 rounded-xl shadow-inner transition-all duration-200">
+                    <p class="text-lg font-medium mb-4 text-gray-700">(${q.language}) ${q.question}</p>
+                    ${q.code_snippet ? `<pre class="code-block mb-6"><code class="language-${q.language.toLowerCase()}">${q.code_snippet.trim()}</code></pre>` : ''}
+                    <div class="space-y-3">
+            `;
+
+            for (const [key, value] of Object.entries(q.options)) {
+                const isSelected = answer === key;
+                let cardClasses = 'option-card cursor-pointer p-4 border-2 rounded-lg transition-colors duration-150 flex items-start';
+                cardClasses += isSelected ? ' bg-blue-100 border-blue-500 shadow-md' : ' bg-white border-gray-200 hover:bg-gray-50';
+
+                html += `
+                    <div class="${cardClasses}" data-option="${key}" onclick="handleMcqSelection(${currentQuestionIndex}, '${key}')">
+                        <span class="font-bold mr-3 text-blue-600">${key}.</span>
+                        <p class="text-gray-800 flex-1">${value}</p>
+                    </div>
+                `;
+            }
+
+            html += `
+                    </div>
+                </div>
+            `;
+            area.innerHTML = html;
+            updateNavigation();
+            // start/reset timer for this question; auto-advance on expiry
+            startTimer(() => {
+                // if time expires, move to next question or submit round
+                const maxIndex = shuffledRound1.length - 1;
+                const prevScore = score;
+                if (currentQuestionIndex < maxIndex) {
+                    currentQuestionIndex++;
+                    renderRound1();
+                    // show badge for delta and reveal header briefly
+                    showScoreBadge(score - prevScore);
+                    revealScoreHeaderTemporary();
+                } else {
+                    // when submitting from round 1, let submitRound handle reveal
+                    submitRound();
+                }
+            });
+        }
+
+        /** Calculates score for Round 1 and moves to Round 2 */
+        function submitRound() {
+            if (currentRound === 1) {
+                // Recalculate using 0/1 per question and ensure flags are set
+                score = 0;
+                for(let i=0; i<userAnswers.round1.length; i++) {
+                    const q = shuffledRound1[i];
+                    if (typeof q._awarded === 'undefined') q._awarded = false;
+                    if (userAnswers.round1[i] === q.answer_key) {
+                        if (!q._awarded) {
+                            q._awarded = true;
+                        }
+                        score += 1;
+                    } else {
+                        q._awarded = false;
+                    }
+                }
+                isRound1Submitted = true;
+                const scaledRound1 = Math.round((score / NUM_QUESTIONS) * 100);
+                showToast(`Round 1 Complete! Score: ${scaledRound1}/100`, 'success');
+                const prev = 0; // show entire accumulated score
+                currentRound = 2;
+                currentQuestionIndex = 0;
+                stopTimer();
+                renderRound2();
+                showScoreBadge(score - prev);
+                revealScoreHeaderTemporary();
+            } else if (currentRound === 2) {
+                // Submit logic is handled in checkRound2Blanks, this button transitions
+                currentRound = 3;
+                currentQuestionIndex = 0;
+                stopTimer();
+                renderRound3();
+            }
+        }
+
+        // --- Round 2 (Fill-in-the-Blank) Logic ---
+
+        /** Handles input change for fill-in-the-blanks */
+        function handleBlankInput(blankId, value) {
+            if (!userAnswers.round2[currentQuestionIndex]) {
+                userAnswers.round2[currentQuestionIndex] = {};
+            }
+            userAnswers.round2[currentQuestionIndex][blankId] = value;
+            
+            // Check if all blanks are filled to enable the Output button
+            // Use the shuffled question set for the current round
+            const q = shuffledRound2[currentQuestionIndex];
+            const isAllFilled = q.blank_keys.every((key, index) => {
+                const blankKey = `BLANK_${index + 1}`;
+                return userAnswers.round2[currentQuestionIndex][blankKey] && userAnswers.round2[currentQuestionIndex][blankKey].trim() !== '';
+            });
+            document.getElementById('output-btn').disabled = !isAllFilled;
+        }
+
+        /** Renders the current Round 2 question */
+        function renderRound2() {
+            hideScoreHeader();
+            document.getElementById('round-title').textContent = `Round 2: Fill-in-the-Blanks (Difficult) (${currentQuestionIndex + 1}/${shuffledRound2.length})`;
+            clearQuestionArea();
+            const q = shuffledRound2[currentQuestionIndex];
+            const answerMap = userAnswers.round2[currentQuestionIndex] || {};
+            const area = document.getElementById('question-area');
+
+            let codeWithBlanks = q.code_template.trim();
+            let blankInputsHtml = '';
+
+            q.blank_keys.forEach((key, index) => {
+                const blankMarker = `[BLANK_${index + 1}]`;
+                const inputId = `BLANK_${index + 1}`;
+                const inputValue = answerMap[inputId] || '';
+
+                // Replace the marker in the code template with a highlighted pill
+                codeWithBlanks = codeWithBlanks.replace(blankMarker, `<span id="${inputId}_span" class="inline-block text-yellow-800 font-bold bg-yellow-200 px-2 py-0.5 rounded border border-yellow-300">${blankMarker}</span>`);
+
+                // Create the input fields below the code
+                blankInputsHtml += `
+                    <div class="flex items-center space-x-3">
+                        <label for="${inputId}" class="text-sm font-semibold text-gray-700">${blankMarker}:</label>
+                        <input type="text" id="${inputId}" value="${inputValue}" oninput="handleBlankInput('${inputId}', this.value)"
+                            class="flex-1 p-2 border-2 border-yellow-300 rounded-lg shadow-sm focus:ring-2 focus:ring-yellow-400 focus:border-yellow-500 text-gray-800 bg-white"
+                            placeholder="Enter replacement for ${blankMarker}">
+                        <span class="ml-2 inline-block text-xs font-semibold text-yellow-700 bg-yellow-100 px-2 py-1 rounded">Blank</span>
+                    </div>
+                `;
+            });
+
+            const currentQuestionState = shuffledRound2[currentQuestionIndex];
+            const outputText = currentQuestionState.userOutput || 'Output will be checked after filling the blanks.';
+            const isCorrect = currentQuestionState.isCorrect === true;
+            const isIncorrect = currentQuestionState.isCorrect === false;
+
+            let outputCardClasses = 'p-4 rounded-xl shadow-md mt-6';
+            if (isCorrect) outputCardClasses += ' correct';
+            else if (isIncorrect) outputCardClasses += ' incorrect';
+            else outputCardClasses += ' bg-gray-100';
+
+
+            let html = `
+                <div class="bg-gray-50 p-5 rounded-xl shadow-inner">
+                    <p class="text-lg font-medium mb-4 text-gray-700">${q.description}</p>
+                    
+                    <pre class="code-block mb-6">${codeWithBlanks}</pre>
+                    
+                    <div class="space-y-3 mb-6">${blankInputsHtml}</div>
+                    
+                    <div id="output-card" class="${outputCardClasses}">
+                        <h4 class="font-bold text-lg mb-2 ${isCorrect ? 'text-green-700' : (isIncorrect ? 'text-red-700' : 'text-gray-700')}">Expected Output:</h4>
+                        <pre class="bg-white p-3 rounded border border-dashed text-sm">${q.correct_output}</pre>
+                        
+                        <h4 class="font-bold text-lg mt-4 mb-2">Your Output Simulation:</h4>
+                        <pre id="simulated-output" class="bg-white p-3 rounded border text-sm">${outputText}</pre>
+
+                        ${isIncorrect ? `<p class="text-red-600 mt-2 font-semibold">Your filled-in code does not produce the expected output. Try again!</p>` : ''}
+                    </div>
+                </div>
+            `;
+            area.innerHTML = html;
+            updateNavigation();
+            // start/reset timer for this Round 2 question
+            startTimer(() => {
+                // auto-check output / move to next blank question when time expires
+                const maxIndex = shuffledRound2.length - 1;
+                const prevScore = score;
+                // If blanks are fillable, try to check output for the current question
+                try { checkRound2Blanks(); } catch(e) { /* ignore if not ready */ }
+                if (currentQuestionIndex < maxIndex) {
+                    currentQuestionIndex++;
+                    renderRound2();
+                    // show badge for delta and reveal header briefly
+                    showScoreBadge(score - prevScore);
+                    revealScoreHeaderTemporary();
+                } else {
+                    // move to next round after a short delay; then show badge/reveal
+                    setTimeout(() => { 
+                        const prev = score;
+                        submitRound(); 
+                        showScoreBadge(score - prev);
+                        revealScoreHeaderTemporary();
+                    }, 300);
+                }
+            });
+        }
+
+        /** Checks the user's answers against the expected output for Round 2 */
+        function checkRound2Blanks() {
+            const qIndex = currentQuestionIndex;
+            const q = shuffledRound2[qIndex];
+            const userAnsMap = userAnswers.round2[qIndex];
+            
+            
+            // Generate the filled-in code (though not executed, we check the *keys*)
+            let code = q.code_template.trim();
+            let isFillCorrect = true;
+            
+            q.blank_keys.forEach((key, index) => {
+                const blankMarker = `[BLANK_${index + 1}]`;
+                const inputId = `BLANK_${index + 1}`;
+                const userInput = (userAnsMap[inputId] || '').trim();
+                
+                // Compare user input against the expected key *in the data structure*
+                if (userInput !== q.blank_keys[index]) {
+                    isFillCorrect = false;
+                }
+                
+                // Replace marker with user input for "display"
+                code = code.replace(blankMarker, userInput);
+            });
+            
+            // Simulating execution for display
+            const simulatedOutput = isFillCorrect ? q.correct_output : "INCORRECT_SYNTAX_OR_LOGIC";
+
+            // Save the state
+            q.isCorrect = isFillCorrect;
+            q.userOutput = simulatedOutput;
+            
+            // Update score immediately (0/1 idempotent using _awarded flag)
+            if (typeof q._awarded === 'undefined') q._awarded = false;
+            if (isFillCorrect && !q._awarded) {
+                const prevScore = score;
+                score += 1;
+                q._awarded = true;
+                // show how many points were gained and reveal header briefly
+                showScoreBadge(score - prevScore);
+                revealScoreHeaderTemporary();
+            } else if (!isFillCorrect && q._awarded) {
+                // If they had previously been marked correct and now incorrect, remove award
+                score = Math.max(0, score - 1);
+                q._awarded = false;
+            }
+            
+            // Rerender to show results
+            renderRound2();
+            updateScoreDisplay();
+
+            if (isFillCorrect) {
+                showToast("Blanks Correct! +1 point awarded.", 'success');
+            } else {
+                showToast("Blanks Incorrect. 0 points awarded.", 'error');
+            }
+        }
+
+
+        // --- Round 3 (Code Creation) Logic ---
+
+        /** Renders the Round 3 challenge */
+        function renderRound3() {
+            hideScoreHeader();
+            document.getElementById('round-title').textContent = `Round 3: Code Creation Challenge (1 Point)`;
+            clearQuestionArea();
+            const q = selectedRound3 || { language: 'N/A', description: 'No challenge available.', target_output: '', points: 0 };
+            const area = document.getElementById('question-area');
+            const userAnswerCode = userAnswers.round3;
+
+            let html = `
+                <div class="bg-gray-50 p-5 rounded-xl shadow-inner">
+                    <p class="text-lg font-medium mb-4 text-gray-700">(${q.language}) **CHALLENGE:** ${q.description}</p>
+                    
+                    <div class="mb-6">
+                        <h4 class="font-bold text-lg mb-2 text-red-600">TARGET OUTPUT:</h4>
+                        <pre class="code-block bg-green-900 text-green-300 p-4 border border-green-500">${q.target_output.trim()}</pre>
+                    </div>
+
+                    <h4 class="font-bold text-lg mb-2 text-gray-700">Your Code: (Write the complete function)</h4>
+                    <textarea id="code-input" oninput="userAnswers.round3 = this.value"
+                        class="w-full h-64 p-3 border border-gray-400 rounded-lg font-mono text-sm bg-gray-900 text-white"
+                        placeholder="// Write your ${q.language} function here...">${userAnswerCode}</textarea>
+
+                    <div id="round3-feedback" class="mt-4 p-4 rounded-lg hidden"></div>
+                </div>
+            `;
+            area.innerHTML = html;
+            updateNavigation();
+            
+            // Show feedback if already submitted
+            if (isRound3Submitted) {
+                displayRound3Feedback(q.isCorrect, q.feedback);
+            }
+            // start/reset timer for Round 3 (code creation) — auto-submit on expiry
+            startTimer(() => {
+                submitRound3();
+            });
+        }
+        
+        /** Simulates the final submission check for Round 3 */
+        function submitRound3() {
+            const userAnswer = userAnswers.round3.trim();
+            if (!userAnswer) {
+                showToast("Please write your code before submitting.", 'error');
+                return;
+            }
+
+            // Since we cannot execute the code, we simulate the evaluation based on complexity/presence of keywords.
+            // This simulation looks for core concepts related to Currying in JS.
+            const keywords = ['function', 'return', 'arguments', '...', 'curryAdd'];
+            const complexityCheck = keywords.every(kw => userAnswer.includes(kw));
+            const isCorrect = complexityCheck && (userAnswer.split('return').length > 2); // Check for multiple returns, typical of currying structure
+
+            const feedbackDiv = document.getElementById('round3-feedback');
+            
+            if (selectedRound3) {
+                selectedRound3.isCorrect = isCorrect;
+                selectedRound3.feedback = isCorrect
+                    ? "Excellent! Your code demonstrates the required pattern. +1 point awarded."
+                    : "The logic is not quite right. 0 points awarded. Review the required concept and try to improve.";
+            }
+
+            // Award/update score for round 3 (0/1, idempotent)
+            if (!isRound3Submitted) {
+                if (isCorrect) {
+                    score += 1;
+                }
+                isRound3Submitted = true;
+            }
+            updateScoreDisplay();
+            displayRound3Feedback(isCorrect, selectedRound3 ? selectedRound3.feedback : '');
+            
+            document.getElementById('final-submit-btn').disabled = true;
+            stopTimer();
+            // Transition to completion screen
+            setTimeout(showCompletionScreen, 1000);
+        }
+        
+        function displayRound3Feedback(isCorrect, feedbackText) {
+             const feedbackDiv = document.getElementById('round3-feedback');
+             feedbackDiv.classList.remove('hidden', 'correct', 'incorrect');
+             feedbackDiv.classList.add(isCorrect ? 'correct' : 'incorrect');
+             feedbackDiv.innerHTML = `
+                <h4 class="font-bold text-xl mb-1">${isCorrect ? 'SUCCESS!' : 'INCORRECT'}</h4>
+                <p>${feedbackText}</p>
+                ${isCorrect ? `<p class="mt-2 text-green-700 font-semibold">+${(selectedRound3 && typeof selectedRound3.points !== 'undefined') ? selectedRound3.points : 0} Points Awarded!</p>` : `<p class="mt-2 text-red-700 font-semibold">0 Points Awarded.</p>`}
+             `;
+        }
+
+        /** Shows the final summary screen */
+        function showCompletionScreen() {
+            stopTimer();
+            document.getElementById('quiz-container').classList.add('hidden');
+            document.getElementById('completion-screen').classList.remove('hidden');
+            // show final scaled score
+            document.getElementById('final-score-display').textContent = Math.round((score / NUM_QUESTIONS) * 100);
+        }
+
+        // --- Initialization ---
+
+        function initializeQuiz() {
+            updateScoreDisplay();
+            renderRound1();
+        }
+
+        window.onload = initializeQuiz;
+    </script>
+</body>
+</html>
